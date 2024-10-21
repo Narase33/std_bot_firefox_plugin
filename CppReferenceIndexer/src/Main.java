@@ -147,6 +147,10 @@ public class Main {
         }
         link = link.substring(0, link_token_end_pos);
 
+        if (link.startsWith("/mwiki")) { // Not yet associated with a site
+            return null;
+        }
+
         link = "https://en.cppreference.com" + link;
         String token = namespace + "::" + token_element;
 
@@ -331,7 +335,9 @@ public class Main {
         StringBuilder json = new StringBuilder();
         json.append("const stlData = {");
         for (TokenLink tokenLink : tokenLinks) {
-            json.append(MessageFormat.format("\n\t\"{0}\": \"{1}\",", tokenLink.token, tokenLink.link.substring("https://en.cppreference.com".length())));
+            final String tokenToWrite = tokenLink.token.substring("std::".length());
+            final String linkToWrite = tokenLink.link.substring("https://en.cppreference.com/w/cpp/".length());
+            json.append(MessageFormat.format("\n\t\"{0}\": \"{1}\",", tokenToWrite, linkToWrite));
         }
         json.deleteCharAt(json.length() - 1);
         json.append("\n};");
