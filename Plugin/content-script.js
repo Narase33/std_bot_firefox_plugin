@@ -13178,8 +13178,20 @@ function setInplaceLinks(str) {
 		}
 
 		let token = str.substring(startAt, endAt);
-		if (token.endsWith('<') && !token.endsWith('operator<')) {
-			token = token.substring(0, token.length - 2);
+		while (token.endsWith('<') && !token.endsWith('operator<') && !token.endsWith('operator<<')) {
+			token = token.substring(0, token.length - 1);
+		}
+
+		while (token.endsWith('>') && !token.endsWith('operator>') && !token.endsWith('operator>>')) {
+			token = token.substring(0, token.length - 1);
+		}
+
+		if (token.endsWith('[') && !token.endsWith('operator[')) {
+			token = token.substring(0, token.length - 1);
+		}
+
+		if (token.endsWith('[') && !token.endsWith('operator(')) {
+			token = token.substring(0, token.length - 1);
 		}
 
 		const ref = stlData[token.substring(tokenStart.length)];
@@ -13265,8 +13277,6 @@ function setLinks(str) {
 // ===== ===== ===== ===== ===== ===== ===== ===== Tests ===== ===== ===== ===== ===== ===== ===== =====
 // ===== ===== ===== ===== ===== ===== ===== =====       ===== ===== ===== ===== ===== ===== ===== =====
 
-const testMode = true;
-
 const testString_org = `std::find blablabla
 
 blablabla std::count blublublu
@@ -13279,6 +13289,12 @@ blablabla std::count blublublu
 > std::all_of
 
 std::none_of
+
+std::vector<std::string>
+
+std::vector::operator[]
+
+std::string::operator<<
 
 [std::none_of](http://www.google.de)
 
@@ -13298,6 +13314,12 @@ blablabla [std::count](https://en.cppreference.com/w/cpp/algorithm/count) blublu
 > std::all_of
 
 [std::none_of](https://en.cppreference.com/w/cpp/algorithm/all_any_none_of)
+
+[std::vector](https://en.cppreference.com/w/cpp/container/vector)<[std::string](https://en.cppreference.com/w/cpp/string/basic_string)>
+
+[std::vector::operator[]](https://en.cppreference.com/w/cpp/container/vector/operator_at)
+
+[std::string::operator<<](https://en.cppreference.com/w/cpp/string/basic_string/operator_ltltgtgt)
 
 [std::none_of](http://www.google.de)
 
@@ -13349,54 +13371,47 @@ const callbackNewReddit = function (mutationsList, observer) {
 const callbackOldReddit = function (mutationsList, observer) {
 	const submitButtons = document.querySelectorAll('button[class="save"][type="submit"][onclick=""]:not([style="display:none"])');
 	submitButtons.forEach((submitButton) => {
-		window.alert("1");
 		const callback_set = submitButton.getAttribute('callback_set');
-		window.alert("2");
 		if ((callback_set != null) && (callback_set == 'true')) {
-			window.alert("3");
 			return;
 		}
 
-		window.alert("4");
 		submitButton.addEventListener('click', () => {
-			window.alert("5");
 			const textBox = submitButton.parentElement.parentElement.parentElement.querySelector("textarea");
-			window.alert("6");
 			textBox.value = setLinks(textBox.value);
-			window.alert("7");
 		}, { capture: true });
-		window.alert("8");
 		submitButton.setAttribute('callback_set', 'true'); // Guardian to never set the callback twice
-		window.alert("9");
 	});
 }
 
+const testMode = false;
 if (testMode) {
 	test();
 } else {
-	const newReddit = !window.location.href.startsWith("https://old");
-	if (newReddit) {
-		const observer = new MutationObserver(callbackNewReddit);
-		const config = { childList: true, characterData: false, subtree: true, attributes: false };
-		window.addEventListener('load', function (e) {
+	const isNewReddit = !window.location.href.startsWith("https://old");
+	if (isNewReddit) {
+		observer = new MutationObserver(callbackNewReddit);
+		config = { childList: true, characterData: false, subtree: true, attributes: false };
+		startUpCallback = function () {
 			callbackNewReddit(null, null);
 			const node = document.querySelector('shreddit-comment-tree');
 			observer.observe(node, config);
-		});
+		};
 	} else {
-		window.alert("16");
-		const observer = new MutationObserver(callbackOldReddit);
-		window.alert("15");
-		const config = { childList: true, characterData: false, subtree: true, attributes: false };
-		window.alert("14");
-		window.addEventListener('DOMContentLoaded', function (e) { // doesnt work :(
-			window.alert("10");
+		observer = new MutationObserver(callbackOldReddit);
+		config = { childList: true, characterData: false, subtree: true, attributes: false };
+		startUpCallback = function () {
 			callbackOldReddit(null, null);
-			window.alert("11");
 			const node = document.querySelector('div[class="commentarea"]');
-			window.alert("12");
 			observer.observe(node, config);
-			window.alert("13");
+		};
+	}
+
+	if (document.readyState === "complete") {
+		startUpCallback();
+	} else {
+		window.addEventListener('load', function (e) {
+			startUpCallback();
 		});
 	}
 }

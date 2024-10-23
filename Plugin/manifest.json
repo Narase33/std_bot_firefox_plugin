@@ -1,23 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Reddit Comment Modifier",
+  "name": "std_bot",
   "version": "1.0",
   "description": "Modifies your Reddit comment before submitting.",
   "permissions": [
-    "activeTab",
-    "storage"
+    "activeTab"
   ],
   "content_scripts": [
     {
       "matches": [
         "https://www.reddit.com/r/cpp_questions/comments/*",
         "https://new.reddit.com/r/cpp_questions/comments/*",
-		"https://old.reddit.com/r/cpp_questions/comments/*",
-		
-		"https://www.reddit.com/r/cpp/comments/*",
-		"https://new.reddit.com/r/cpp/comments/*",
+        "https://old.reddit.com/r/cpp_questions/comments/*",
+        "https://www.reddit.com/r/cpp/comments/*",
+        "https://new.reddit.com/r/cpp/comments/*",
         "https://old.reddit.com/r/cpp/comments/*",
-		
         "https://www.reddit.com/r/test/comments/*",
         "https://new.reddit.com/r/test/comments/*",
         "https://old.reddit.com/r/test/comments/*"
@@ -28,10 +25,10 @@
     }
   ],
   "icons": {
-    "48": "icons/icon.png"
+    "48": "icon.png"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icons/icon.png"
+    "default_icon": "icon.png"
   }
 }

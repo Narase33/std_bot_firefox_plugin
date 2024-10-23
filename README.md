@@ -1,15 +1,15 @@
 # std_bot_firefox_plugin
 This is my @std_bot_cpp as Firefox plugin.
 
-This repo contains of 2 programs.
+This repository contains 2 programs.
 
 ## The plugin
 
 You can add it to your Firefox and it should work as intended.
 
-Currently it only works for the new design and only if your comment is sent via Markdown Editor. You can edit your comments, new links will be set, old ones will not be linked again.
+It works for New Design if your comment is sent via Markdown Editor. Old design is supported, too, just use the regular editor tab. You can edit your comments, new links will be set, old ones will not be linked again.
 
-The code is a mess, because I don't know JS. If you like to contribute to clean it up or make it run in fancy editor or old Reddit, feel free.
+The code is a mess, because I don't know JS. If you like to contribute to clean it up or make it run in fancy editor, feel free.
 
 ## CppReferenceIndexer
 
