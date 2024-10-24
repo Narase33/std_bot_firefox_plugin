@@ -12,6 +12,49 @@ import java.util.HashMap;
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
+    private static class TokenLink {
+        public String token;
+        public String link;
+        public TokenType type;
+
+        public TokenLink(String token, String link, TokenType type) {
+            this.token = token;
+            this.link = link;
+            this.type = type;
+        }
+
+        public String toString() {
+            return MessageFormat.format("({0}) {1} -> {2}", type.toString(), token, link);
+        }
+    }
+
+    private static class IndexResult {
+        public ArrayList<TokenLink> containers = new ArrayList<>();
+        public ArrayList<TokenLink> functions = new ArrayList<>();
+        public ArrayList<TokenLink> namespaces = new ArrayList<>();
+    }
+
+    private static class ExtractionResult {
+        public String value;
+        public int startIndex;
+        public int endIndex;
+
+        public ExtractionResult(String value, int startIndex, int endIndex) {
+            this.value = value;
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
+        }
+    }
+
+    private static class PageNotFoundException extends Exception {
+        public PageNotFoundException() {
+        }
+    }
+
+    enum TokenType {
+        Function, Container, Namespace
+    }
+
     private final HashMap<String, ArrayList<String>> pageCache = new HashMap<>();
     private long lastPageLoadTime = 0;
     private FileWriter logFile = null;
@@ -114,78 +157,85 @@ public class Main {
         return null;
     }
 
-    private TokenLink findLinkInLine(String line, String namespace, String prefix, String postfix, boolean inContainer) {
-        final String link_token_begin = "<a href=\"";
-        final String link_token_end = "\"";
-
-        int capsulationBegin_pos = line.indexOf(prefix);
+    private ExtractionResult extract(String line, int startPos, String prefix, String postfix) {
+        final int capsulationBegin_pos = line.indexOf(prefix, startPos);
         if (capsulationBegin_pos == -1) {
             return null;
         }
 
-        String token_element = line;
-        token_element = token_element.substring(capsulationBegin_pos + prefix.length());
-
-        final int capsulationEnd_pos = token_element.indexOf(postfix);
+        final int capsulationEnd_pos = line.indexOf(postfix, capsulationBegin_pos + prefix.length());
         if (capsulationEnd_pos == -1) {
             return null;
         }
 
-        token_element = token_element.substring(0, capsulationEnd_pos);
-
-        String link = line;
-        final int link_token_begin_pos = link.lastIndexOf(link_token_begin, capsulationBegin_pos);
-        if (link_token_begin_pos == -1) {
-            return null;
-        }
-        link = link.substring(link_token_begin_pos + link_token_begin.length());
-
-
-        final int link_token_end_pos = link.indexOf(link_token_end);
-        if (link_token_end_pos == -1) {
-            return null;
-        }
-        link = link.substring(0, link_token_end_pos);
-
-        if (link.startsWith("/mwiki")) { // Not yet associated with a site
-            return null;
-        }
-
-        link = "https://en.cppreference.com" + link;
-        String token = namespace + "::" + token_element;
-
-        token = token.replaceAll("&lt;", "<");
-        token = token.replaceAll("&gt;", ">");
-
-        TokenType type = TokenType.Container;
-        if (prefix.equals("<code>")) {
-            type = TokenType.Namespace;
-        } else if (token.endsWith("<>()")) {
-            type = TokenType.Function;
-            token = token.substring(0, token.length() - "<>()".length());
-        } else if (token.endsWith("()")) {
-            type = TokenType.Function;
-            token = token.substring(0, token.length() - "()".length());
-        } else if (inContainer) {
-            type = TokenType.Function;
-        }
-
-        if (!isRealTokenName(token)) {
-            logErr("Discarded invalid token name: " + token);
-            return null;
-        }
-
-        return new TokenLink(token, link, type);
+        return new ExtractionResult(line.substring(capsulationBegin_pos + prefix.length(), capsulationEnd_pos), capsulationBegin_pos, capsulationEnd_pos);
     }
 
-    private TokenLink findLinkInLine(String line, String namespace, boolean inContainer) {
-        TokenLink tokenLink = findLinkInLine(line, namespace, "<tt>", "</tt>", inContainer);
-        if (tokenLink == null) {
-            tokenLink = findLinkInLine(line, namespace, "<code>", "</code>", inContainer);
+
+    private ArrayList<TokenLink> findLinkInLine(String line, String namespace, String prefix, String postfix, boolean inContainer) {
+        final String link_token_begin = "<a href=\"";
+        final String link_token_end = "\"";
+
+        ArrayList<TokenLink> result = new ArrayList<>();
+        final ExtractionResult linkExtract = extract(line, 0, link_token_begin, link_token_end);
+        if (linkExtract == null) {
+            return result;
         }
 
-        if (tokenLink == null) {
-            tokenLink = findLinkInLine(line, namespace, "<span>", "</span>", inContainer);
+        if (linkExtract.value.startsWith("/mwiki")) { // Not yet associated with a site
+            logErr("Discarded /mwiki link: " + linkExtract.value);
+            return result;
+        }
+
+        linkExtract.value = "https://en.cppreference.com" + linkExtract.value;
+
+        ExtractionResult tokenExtract = extract(line, linkExtract.endIndex, prefix, postfix);
+        while (tokenExtract != null) {
+            if (!tokenExtract.value.isEmpty()) {
+                String token = namespace + "::" + tokenExtract.value;
+                token = token.replaceAll("&lt;", "<");
+                token = token.replaceAll("&gt;", ">");
+
+                TokenType type = TokenType.Container;
+                if (prefix.equals("<code>")) {
+                    type = TokenType.Namespace;
+                } else if (token.endsWith("<>()")) {
+                    type = TokenType.Function;
+                    token = token.substring(0, token.length() - "<>()".length());
+                } else if (token.endsWith("()") && !token.endsWith("()")) {
+                    type = TokenType.Function;
+                    token = token.substring(0, token.length() - "()".length());
+                } else if (inContainer) {
+                    type = TokenType.Function;
+                }
+
+                if (!isRealTokenName(token)) {
+                    logErr("Discarded invalid token name: " + token);
+                } else {
+                    result.add(new TokenLink(token, linkExtract.value, type));
+                }
+            }
+
+            tokenExtract = extract(line, tokenExtract.endIndex, prefix, postfix);
+        }
+
+        return result;
+    }
+
+    private ArrayList<TokenLink> findLinkInLine(String line, String namespace, boolean inContainer) {
+        ArrayList<TokenLink> tokenLink;
+        if (inContainer) {
+            tokenLink = findLinkInLine(line, namespace, "<span>", "</span>", true);
+        } else {
+            tokenLink = findLinkInLine(line, namespace, "<tt>", "</tt>", false);
+
+            if (tokenLink.isEmpty()) {
+                tokenLink = findLinkInLine(line, namespace, "<code>", "</code>", false);
+            }
+
+            if (tokenLink.isEmpty()) {
+                tokenLink = findLinkInLine(line, namespace, "<span>", "</span>", false);
+            }
         }
 
         return tokenLink;
@@ -205,8 +255,8 @@ public class Main {
                 break; // We end if we encounter a "See also" section
             }
 
-            final TokenLink tokenLink = findLinkInLine(line, namespace, true);
-            if (tokenLink != null) {
+            final ArrayList<TokenLink> tokenLinks = findLinkInLine(line, namespace, true);
+            for (TokenLink tokenLink : tokenLinks) {
                 switch (tokenLink.type) {
                     case Function:
                         log("Found: " + tokenLink);
@@ -240,8 +290,8 @@ public class Main {
                 break; // We end if we encounter a "See also" section
             }
 
-            final TokenLink tokenLink = findLinkInLine(line, namespace, false);
-            if (tokenLink != null) {
+            final ArrayList<TokenLink> tokenLinks = findLinkInLine(line, namespace, false);
+            for (TokenLink tokenLink : tokenLinks) {
                 switch (tokenLink.type) {
                     case Function:
                         log("Found: " + tokenLink);
@@ -350,13 +400,23 @@ public class Main {
         }
     }
 
-    private void start() throws InterruptedException, IOException {
+    private void start() throws Exception {
         logFile = new FileWriter("log.txt");
 
         final long start = System.currentTimeMillis();
 
         //final ArrayList<TokenLink> tokens = indexNamespace("https://en.cppreference.com/w/cpp/symbol_index/chrono", "std::chrono");
         //final ArrayList<TokenLink> tokens = indexContainer("https://en.cppreference.com/w/cpp/container/vector", "std::vector");
+
+//        findLinksInSymbolIndex(loadPage("https://en.cppreference.com/w/cpp/symbol_index/chrono"), "std::chrono");
+//        log();
+//        findLinksInContainer(loadPage("https://en.cppreference.com/w/cpp/container/vector"), "std::vector");
+//        log();
+//        findLinksInContainer(loadPage("https://en.cppreference.com/w/cpp/string/basic_string"), "std::string");
+//        log();
+//        findLinksInContainer(loadPage("https://en.cppreference.com/w/cpp/utility/functional/function"), "std::function");
+//        System.exit(0);
+
         final ArrayList<TokenLink> tokens = indexCppReference();
 
         log();
@@ -373,36 +433,5 @@ public class Main {
         log(MessageFormat.format("Time taken: {0} ms", duration_ms));
         log(MessageFormat.format("Time taken: {0} s", duration_ms / 1000.0));
         log(MessageFormat.format("Time taken: {0} min", duration_ms / (60 * 1000.0)));
-    }
-
-    enum TokenType {
-        Function, Container, Namespace
-    }
-
-    private static class TokenLink {
-        public String token;
-        public String link;
-        public TokenType type;
-
-        public TokenLink(String token, String link, TokenType type) {
-            this.token = token;
-            this.link = link;
-            this.type = type;
-        }
-
-        public String toString() {
-            return MessageFormat.format("({0}) {1} -> {2}", type.toString(), token, link);
-        }
-    }
-
-    private static class IndexResult {
-        public ArrayList<TokenLink> containers = new ArrayList<>();
-        public ArrayList<TokenLink> functions = new ArrayList<>();
-        public ArrayList<TokenLink> namespaces = new ArrayList<>();
-    }
-
-    private static class PageNotFoundException extends Exception {
-        public PageNotFoundException() {
-        }
     }
 }
