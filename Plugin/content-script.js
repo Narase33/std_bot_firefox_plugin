@@ -13183,7 +13183,17 @@ std::vector<std::string>
 
 std::vector::operator[]
 
+std::function::operator()
+
 std::string::operator<<
+
+std::string::operator<
+
+std::string::operator>
+
+std::string::operator==
+
+std::string::operator!=
 
 [std::none_of](http://www.google.de)
 
@@ -13208,7 +13218,17 @@ blablabla [std::count](https://en.cppreference.com/w/cpp/algorithm/count) blublu
 
 [std::vector::operator[]](https://en.cppreference.com/w/cpp/container/vector/operator_at)
 
+[std::function::operator()](https://en.cppreference.com/w/cpp/utility/functional/function/operator())
+
 [std::string::operator<<](https://en.cppreference.com/w/cpp/string/basic_string/operator_ltltgtgt)
+
+[std::string::operator<](https://en.cppreference.com/w/cpp/string/basic_string/operator_cmp)
+
+[std::string::operator>](https://en.cppreference.com/w/cpp/string/basic_string/operator_cmp)
+
+[std::string::operator==](https://en.cppreference.com/w/cpp/string/basic_string/operator_cmp)
+
+[std::string::operator!=](https://en.cppreference.com/w/cpp/string/basic_string/operator_cmp)
 
 [std::none_of](http://www.google.de)
 
