@@ -120,8 +120,9 @@ public class Main {
         for (int i = 0; i < maxTries; i++) {
             try {
                 final long timeFromLastCall = System.currentTimeMillis() - lastPageLoadTime;
-                if (timeFromLastCall < 5_000) {
-                    Thread.sleep(5_000 - timeFromLastCall); // Please dont DOS cppreference.com
+                final int delayBetweenCalls = 5_000;
+                if (timeFromLastCall < delayBetweenCalls) {
+                    Thread.sleep(delayBetweenCalls - timeFromLastCall); // Please dont DOS cppreference.com
                 }
 
                 final URL url = new URL(urlAsString);
